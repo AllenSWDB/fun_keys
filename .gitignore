@@ -1,3 +1,6 @@
+local_notebooks/*
+local_code/*
+
 metadata/metadata.yml
 
 /data/
