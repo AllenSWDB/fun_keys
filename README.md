@@ -1,4 +1,4 @@
-# SWDB_2023
+# SWDB_2023: Team fun_keys
 
 This is the template repository for the Visual Behavior datasets for the 2023 Summer Workshop on the Dynamic Brain.
 
