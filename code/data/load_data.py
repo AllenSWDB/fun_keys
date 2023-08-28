@@ -8,6 +8,8 @@ from allensdk.brain_observatory.behavior.behavior_project_cache import VisualBeh
 
 def load_cache_behavior_neuropixel():
     """ Load cache object for visual behavior neuropixel dataset
+    
+    Returns a cache object
     """
     
     platstring = platform.platform()
