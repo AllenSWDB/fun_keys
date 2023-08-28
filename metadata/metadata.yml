@@ -1,17 +1,7 @@
 metadata_version: 1
-<<<<<<< HEAD
-<<<<<<< HEAD
-name: Francesco fun_keys from GitHub
-=======
 
 name: Adrian fun_keys from GitHub
 
->>>>>>> 1a427b66a0f95f6b6763311aab0233731dd80259
-=======
-
-name: Adrian fun_keys from GitHub
-
->>>>>>> 1a427b66a0f95f6b6763311aab0233731dd80259
 description: Template Capsule for using the Visual Behavior datasets for the Summer
   Workshop on the Dynamic Brain 2023.
 tags:
