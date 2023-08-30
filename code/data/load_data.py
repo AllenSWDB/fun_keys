@@ -17,6 +17,7 @@ import platform
 from allensdk.brain_observatory.behavior.behavior_project_cache import VisualBehaviorNeuropixelsProjectCache
 import numpy as np
 import pandas as pd
+import scipy as sp
 
 
 def load_cache_behavior_neuropixel():
@@ -140,5 +141,60 @@ def make_behavior_table(session, df):
     behavior_data = pd.DataFrame({
                 'Mean speed': mean_speed, 
                 'Mean pupil area': mean_pupil_area})
+    
+    return behavior_data
+
+
+def make_behavior_table_active(session,trial_df):
+    '''
+    Input session and stim/pres df with selected trials to analyze.
+    This finds the matching trial IDs in the trial metadata
+    and extracts behavioral variables per trial - NOT per stimulus presentation.
+    '''
+    #get trial IDs from the trial_df (i.e. the df based on stim presentations)
+    trialsWeWant=np.unique(trial_df.trials_id.values).tolist()
+    
+    # find the trials in the trial metadata that correspond to those in the stime-defined trial df
+    trial_metadata=session.trials
+    trial_metadata=trial_metadata.loc[trialsWeWant]
+    trial_metadata=trial_metadata[trial_metadata.go]
+    
+    # Get timestamps corresponding to go trials
+    trial_start = trial_metadata.start_time
+    trial_stop = trial_metadata.stop_time
+
+    # Get running speed and corresponding timestamps
+    running_time = session.running_speed.timestamps
+    running_speed = session.running_speed.speed
+    mean_speed = [np.nanmean(running_speed[np.logical_and(s1 <= running_time, running_time <= s2)]) for s1, s2 in zip(trial_start, trial_stop)]
+
+    # Get pupil size and corresponding timestamps
+    pupil_time = session.eye_tracking.timestamps
+    pupil_area = session.eye_tracking.pupil_area
+    mean_pupil_area = [np.nanmean(pupil_area[np.logical_and(s1 <= pupil_time, pupil_time <= s2)]) for s1, s2 in zip(trial_start, trial_stop)]
+    # impute missing values
+    inds = np.where(np.isnan(mean_pupil_area))[0]
+    for i in inds:
+        mean_pupil_area[i] = np.nanmean(mean_pupil_area[i-1:i+1])
+    Z_mean_pupil = sp.stats.zscore(mean_pupil_area)
+    
+    #get lick count
+    lick_count = trial_metadata.apply(lambda row : len(row['lick_times']), axis = 1)
+    
+    #get rolling average hit rate. Right now window is set to 5 trials.
+    hit_rate = trial_metadata.hit.rolling(5).mean() #we are choosing to do a rolling avrg over 5 trials
+    
+    #get true/false hit for each trial as a number
+    hit_bool = trial_metadata['hit'].astype(int)
+
+    # Construct a dataframe
+    behavior_data = pd.DataFrame({
+                'Mean speed': mean_speed, 
+                'Mean pupil area': mean_pupil_area,
+                'Zscored mean pupil area': Z_mean_pupil,
+                'Lick count': lick_count,
+                'Rolling mean hit rate': hit_rate,
+                'Hit/miss this trial' : hit_bool,
+    })
     
     return behavior_data
