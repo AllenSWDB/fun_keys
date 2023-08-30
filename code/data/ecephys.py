@@ -229,7 +229,7 @@ def get_all_stim_xarrays(trial_df, data_xr, start_dt=0, end_dt=0.5):
     for active in [True, False]:
         for image_int in range(8):
             stim_xr = get_stim_xarray(trial_df, data_xr, image_int,
-                                              active, start_dt=0, end_dt=0.5)
+                                              active, start_dt=start_dt, end_dt=end_dt)
             all_stim_xrs.append( stim_xr )
         
     return all_stim_xrs
