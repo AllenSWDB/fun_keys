@@ -17,6 +17,7 @@ import platform
 from allensdk.brain_observatory.behavior.behavior_project_cache import VisualBehaviorNeuropixelsProjectCache
 import numpy as np
 import pandas as pd
+import scipy as sp
 
 
 def load_cache_behavior_neuropixel():
@@ -175,7 +176,7 @@ def make_behavior_table_active(session,trial_df):
     inds = np.where(np.isnan(mean_pupil_area))[0]
     for i in inds:
         mean_pupil_area[i] = np.nanmean(mean_pupil_area[i-1:i+1])
-    Z_mean_pupil = scipy.stats.zscore(mean_pupil_area)
+    Z_mean_pupil = sp.stats.zscore(mean_pupil_area)
     
     #get lick count
     lick_count = trial_metadata.apply(lambda row : len(row['lick_times']), axis = 1)
