@@ -5,10 +5,12 @@ from tqdm import tqdm
 import xarray as xr
 import numpy as np
 
+import os
+
 def get_unit_counts_per_session(cache,
                          select_order = ['VISp', 'VISal', 'VISam', 'VISrl',
-                                         'VISl', 'LP', 'LGd', 'LGv', 'CA1',
-                                         'DG', 'VISl']
+                                         'VISl', 'VISpm', 'LP', 'LGd', 'LGv', 'CA1',
+                                         'DG', ]
                                ):
     """ Returns a pandas dataframe with simultaneously recorded units
         in the specified areas
@@ -41,20 +43,41 @@ def simplify_names( name ):
     units['easy_name'] = units.structure_acronym.apply( simplify_names )
     
     """
-    if name in ['VISp']:
-        return '1__V1'
-    if name in ['VISal', 'VISam', 'VISl', 'VISpm', 'VISrl']:
-        return '2__V2'
-    if name in ['CA1', 'CA3', 'DG']:
-        return '4__HP'
-    if name in ['LP']:
-        return '3__TH_2'
-    if name in ['LGd', 'LGv']:
-        return '0__TH_1'
+    if name in ['LGd', 'LGv']:       return 'LGN'
+    if name in ['VISp']:             return 'VISp'
+    if name in ['VISl', 'VISal']:    return 'VIS_lat'
+    if name in ['VISam', 'VISpm']:   return 'VIS_med'
+    if name in ['VISrl']:            return 'PTLp'
+    if name in ['LP']:               return 'LP'
+    if name in ['CA1', 'CA3', 'DG']: return 'HP'
+    return 'other'
+
+def simplify_names_to_int( name ):
+    """ Assign custom integer of brain areas into a simpler classification
     
-    return '5__other'
+    Usage example:
+    units['area_int'] = units.structure_acronym.apply( simplify_names_to_int )
+    
+    """
+    if name in ['LGd', 'LGv']:       return 0
+    if name in ['VISp']:             return 1
+    if name in ['VISl', 'VISal']:    return 2
+    if name in ['VISam', 'VISpm']:   return 3
+    if name in ['VISrl']:            return 4
+    if name in ['LP']:               return 5
+    if name in ['CA1', 'CA3', 'DG']: return 6
+    return 7
 
-
+def easy_layer(layer):
+    """ Simplify layer assignment """
+    if layer in ['2/3', '4']:
+        return 'sup'
+    if layer in ['5', '6a', '6b']:
+        return 'deep'
+    else:
+        return layer # nan
+    
+    
 def add_cortical_layer_to_units( units ):
     """ This function requires the vbn_supplemental_tables to be mapped
     to the data folder of the CodeOcean capsule!
@@ -77,6 +100,8 @@ def add_cortical_layer_to_units( units ):
     
     # add the layer cortical layer information to the table
     units = units.merge(right=df_part, left_on='id', right_on='unit_id')
+    units.index = units['unit_id']
+    
     return units
 
 
@@ -140,24 +165,32 @@ def easy_spike_matrix_and_unit_table(cache, session, with_layer=False):
     
     # add easy name
     units['easy_name'] = units.structure_acronym.apply( simplify_names )
+    units['area_int'] = units.structure_acronym.apply(  simplify_names_to_int )
     
     # get xarray with spike matrix
     data_xr = get_spike_matrix_10ms(units, session)
     
     if with_layer == False:
         
-        units_reduced = units[['structure_acronym', 'easy_name', 'firing_rate', 'peak_channel_id',
-                       'probe_vertical_position', 'anterior_posterior_ccf_coordinate',
-                       'dorsal_ventral_ccf_coordinate', 'left_right_ccf_coordinate', ]]
+        units_reduced = units[['structure_acronym', 'easy_name', 'area_int', 
+                               'firing_rate', 'peak_channel_id',
+                               'probe_vertical_position',
+                               'anterior_posterior_ccf_coordinate',
+                               'dorsal_ventral_ccf_coordinate',
+                               'left_right_ccf_coordinate', ]]
         return data_xr, units_reduced
     
     # otherwise add layer information
     units = add_cortical_layer_to_units( units )
+    units['easy_layer'] = units.cortical_layer.apply( easy_layer )
     
-    units_reduced = units[['structure_acronym', 'easy_name', 'cortical_layer',
+    units_reduced = units[['structure_acronym', 'easy_name', 'area_int', 
+                           'easy_layer', 'cortical_layer',
                            'firing_rate', 'peak_channel_id',
-               'probe_vertical_position', 'anterior_posterior_ccf_coordinate',
-               'dorsal_ventral_ccf_coordinate', 'left_right_ccf_coordinate', ]]
+                           'probe_vertical_position',
+                           'anterior_posterior_ccf_coordinate',
+                           'dorsal_ventral_ccf_coordinate',
+                           'left_right_ccf_coordinate', ]]
     return data_xr, units_reduced
     
     
