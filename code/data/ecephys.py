@@ -170,6 +170,9 @@ def easy_spike_matrix_and_unit_table(cache, session, with_layer=False):
     # get xarray with spike matrix
     data_xr = get_spike_matrix_10ms(units, session)
     
+    units['FS']=False
+    units['FS'][units['waveform_duration']<.4]=True
+    
     if with_layer == False:
         
         units_reduced = units[['structure_acronym', 'easy_name', 'area_int', 
@@ -177,7 +180,7 @@ def easy_spike_matrix_and_unit_table(cache, session, with_layer=False):
                                'probe_vertical_position',
                                'anterior_posterior_ccf_coordinate',
                                'dorsal_ventral_ccf_coordinate',
-                               'left_right_ccf_coordinate', ]]
+                               'left_right_ccf_coordinate','FS' ]]
         return data_xr, units_reduced
     
     # otherwise add layer information
@@ -190,7 +193,7 @@ def easy_spike_matrix_and_unit_table(cache, session, with_layer=False):
                            'probe_vertical_position',
                            'anterior_posterior_ccf_coordinate',
                            'dorsal_ventral_ccf_coordinate',
-                           'left_right_ccf_coordinate', ]]
+                           'left_right_ccf_coordinate','FS',]]
     return data_xr, units_reduced
     
     
@@ -308,3 +311,10 @@ def get_presentation_xarray(presentation_table, data_xr, start_dt=0, end_dt=0.5,
     pres_xr.name = 'All stim presentations'
     
     return pres_xr
+
+
+def find_FS_units(unit_table):
+    unit_table['FS']=False
+    unit_table['FS'][unit_table['waveform_duration']<.4]=True
+    
+    return unit_table
