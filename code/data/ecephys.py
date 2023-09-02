@@ -244,6 +244,46 @@ def get_stim_xarray(trial_df, data_xr, image_int, active, start_dt=0, end_dt=0.5
     
     return stim_xr
 
+def get_stim_xarray_all(trial_df, data_xr, start_dt=0, end_dt=0.5):
+    """ Return slices from the large data_xr at specific conditions and image numbers
+    
+    Returns xarray (nr_stims, nr_units, time) for given condition
+    
+    Usage:
+    from data import load_data, ecephys
+    trial_df = load_data.get_trial_df(session)
+    data_xr, units = ecephys.easy_spike_matrix_and_unit_table(cache, session)
+    image_int = 3    # can be between 0 and 7
+    active = True    # can be True or False
+    start_dt = -0.1  # will be added to 0, negative values for stim before
+    end_dt = 0.5     # end time (in seconds)
+    
+    stim_xr = get_stim_xarray(trial_df, data_xr, image_int, active, start_dt, end_dt)
+    """
+    
+    sel_trial = trial_df
+    sel_data = list()
+    sel_stim_id = list()
+
+    for ind, start_t in sel_trial.start_time.items():
+        sel_stim_id.append(ind)
+        startInd = np.searchsorted(data_xr.time, start_t+start_dt)
+        endInd = np.searchsorted(data_xr.time, start_t+end_dt)  
+        sel_data.append( data_xr[:,startInd:endInd] )
+        
+    stim_arr = np.stack( [ar.data for ar in sel_data] )
+    time_part = sel_data[0].time.data - sel_data[0].time.data[0] + start_dt
+
+    stim_xr = xr.DataArray(stim_arr.astype(np.int16),
+                           dims=("stim_id", "unit_id", "time"),
+                           coords={"stim_id": sel_stim_id, 
+                                   "unit_id": data_xr.unit_id, "time": time_part}
+                          )
+
+
+    stim_xr.name = 'All data'
+    return stim_xr
+
 
 def get_all_stim_xarrays(trial_df, data_xr, start_dt=0, end_dt=0.5):
     """ Returns a list with stim_xr for active/passive and all 8 images
@@ -318,3 +358,92 @@ def find_FS_units(unit_table):
     unit_table['FS'][unit_table['waveform_duration']<.4]=True
     
     return unit_table
+
+
+
+def load_local_files(session_id):
+    """ """
+    # load from data
+    file = '../analysis_data/data_xr_{}.h5'.format(session_id)
+    data_xr = xr.open_dataset( file ).to_array()
+    data_xr = data_xr.drop_vars('variable')
+    data_xr = data_xr.squeeze('variable')
+
+    file = '../analysis_data/units_{}.feather'.format(session_id)
+    units = pd.read_feather( file )
+    units.index = units['unit_id']
+
+    # file = '../analysis_data/trial_df_{}.feather'.format(session_id)
+    # trial_df = pd.read_feather( file )
+    # trial_df.index = trial_df['stimulus_presentations_id']
+
+    # Load data with HMM output
+    file = '../analysis_data/AP{}.feather'.format(session_id)
+    trial_df = pd.read_feather( file )
+    trial_df.index = trial_df['stimulus_presentations_id']
+    
+    return data_xr, units, trial_df
+
+
+def create_nice_xarrays(trial_df, data_xr, return_val='noise_ds'):
+    """ """
+    
+    start_dt = -0.1     # will be added to 0, negative values for times before stim onset
+    end_dt = 0.65     # end time (in seconds)
+
+    all_stim_xrs = get_all_stim_xarrays(trial_df, data_xr, start_dt, end_dt)
+
+    image_int = list()
+    active_period = list()
+    ds_stim_xrs = list()
+    ds_noise_xrs = list()
+    avg_sig_xrs = list()
+
+    for i in range(16):
+        # reset time to avoid float variations
+        all_stim_xrs[i]['time'] = all_stim_xrs[0].time
+
+        stim_xr = all_stim_xrs[i]
+        d = stim_xr.data
+        red_data = np.add.reduceat(d[:,:,0:70], axis=2, indices=np.arange(0,70,10))
+        red_time = np.add.reduceat(stim_xr.time.data[0:70], axis=0, indices=np.arange(0,70,10)) / 10
+
+        # create dataframe
+        ds_stim_xr = xr.DataArray(data = red_data,
+                                dims=("stim_id", "unit_id", "time"),
+                                coords={"stim_id": stim_xr.stim_id, 
+                                        "unit_id": data_xr.unit_id, "time": red_time}
+                                 )
+        ds_stim_xrs.append( ds_stim_xr )
+
+        # calculate noise term
+        ds_noise_xr = ds_stim_xr - ds_stim_xr.mean('stim_id')
+        ds_noise_xrs.append( ds_noise_xr )
+
+        # calculate average signal
+        avg_sig_xr = stim_xr.mean('stim_id')
+        avg_sig_xrs.append( avg_sig_xr )
+
+        nr_stim = len( all_stim_xrs[i].stim_id )
+        image_int.append( np.ones( nr_stim ) * stim_xr.attrs['image_int'] )
+        active_period.append( np.ones( nr_stim ) * stim_xr.attrs['active'] == True)
+
+    image_int = np.concatenate( image_int )
+    active_period = np.concatenate( active_period )
+
+    merge_ds = xr.concat( ds_stim_xrs, dim='stim_id')
+    merge = xr.concat( all_stim_xrs, dim='stim_id')
+    merge_noise = xr.concat( ds_noise_xrs, dim='stim_id')
+
+    avg_merge = xr.concat( avg_sig_xrs, dim='linear_stim' )
+    avg_merge = avg_merge.transpose("unit_id", "linear_stim", "time")
+    avg_merge = avg_merge.stack( merge_time=('linear_stim', 'time') )
+    
+    if return_val=='noise_ds':
+        return avg_merge, merge_noise, image_int, active_period
+    elif return_val=='merge_ds':
+        return avg_merge, merge_ds, image_int, active_period
+    elif return_val=='merge':
+        return avg_merge, merge, image_int, active_period
+    else:
+        raise Exception()
