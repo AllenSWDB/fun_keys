@@ -12,6 +12,9 @@ RUN pip install -U --no-cache-dir \
     numpy==1.23.4 \
     scikit-learn==1.3.0 \
     allensdk==2.15.1 \
-    dynamax[notebooks]
+    dynamax[notebooks] \
+    plotly \
+    ipympl \
+    pyarrow
 
 ENV PYTHONPATH "${PYTHONPATH}:/root/capsule/code"
