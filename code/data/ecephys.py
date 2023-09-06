@@ -1,6 +1,13 @@
 """ Functions to work with behavior neuropixel data
 """
 import pandas as pd
+<<<<<<< HEAD
+
+def get_unit_counts_per_session(cache,
+                         select_order = ['VISp', 'VISal', 'VISam', 'VISrl',
+                                         'VISl', 'LP', 'LGd', 'LGv', 'CA1',
+                                         'DG', 'VISl']
+=======
 from tqdm import tqdm
 import xarray as xr
 import numpy as np
@@ -11,6 +18,7 @@ def get_unit_counts_per_session(cache,
                          select_order = ['VISp', 'VISal', 'VISam', 'VISrl',
                                          'VISl', 'VISpm', 'LP', 'LGd', 'LGv', 'CA1',
                                          'DG', ]
+>>>>>>> aa8ac40bd8d119ede8bc4d4578b97e367737fc33
                                ):
     """ Returns a pandas dataframe with simultaneously recorded units
         in the specified areas
@@ -43,6 +51,22 @@ def simplify_names( name ):
     units['easy_name'] = units.structure_acronym.apply( simplify_names )
     
     """
+<<<<<<< HEAD
+    if name in ['VISp']:
+        return '1__V1'
+    if name in ['VISal', 'VISam', 'VISl', 'VISpm', 'VISrl']:
+        return '2__V2'
+    if name in ['CA1', 'CA3', 'DG']:
+        return '4__HP'
+    if name in ['LP']:
+        return '3__TH_2'
+    if name in ['LGd', 'LGv']:
+        return '0__TH_1'
+    
+    return '5__other'
+
+
+=======
     if name in ['LGd', 'LGv']:       return 'LGN'
     if name in ['VISp']:             return 'VISp'
     if name in ['VISl', 'VISal']:    return 'VIS_lat'
@@ -78,6 +102,7 @@ def easy_layer(layer):
         return layer # nan
     
     
+>>>>>>> aa8ac40bd8d119ede8bc4d4578b97e367737fc33
 def add_cortical_layer_to_units( units ):
     """ This function requires the vbn_supplemental_tables to be mapped
     to the data folder of the CodeOcean capsule!
@@ -100,6 +125,9 @@ def add_cortical_layer_to_units( units ):
     
     # add the layer cortical layer information to the table
     units = units.merge(right=df_part, left_on='id', right_on='unit_id')
+<<<<<<< HEAD
+    return units
+=======
     units.index = units['unit_id']
     
     return units
@@ -447,3 +475,4 @@ def create_nice_xarrays(trial_df, data_xr, return_val='noise_ds'):
         return avg_merge, merge, image_int, active_period
     else:
         raise Exception()
+>>>>>>> aa8ac40bd8d119ede8bc4d4578b97e367737fc33
