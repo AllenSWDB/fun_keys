@@ -312,9 +312,3 @@ def get_presentation_xarray(presentation_table, data_xr, start_dt=0, end_dt=0.5,
     
     return pres_xr
 
-
-def find_FS_units(unit_table):
-    unit_table['FS']=False
-    unit_table['FS'][unit_table['waveform_duration']<.4]=True
-    
-    return unit_table
